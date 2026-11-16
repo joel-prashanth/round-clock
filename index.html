@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Round Clock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Barlow:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one big clock stage on top that floods with the phase colour, controls and the current exercise beneath, tab bar fixed at the bottom. Built for a phone propped on the floor. */
+:root{
+  --bg:#f2f0ea; --surface:#ffffff; --ink:#1b1d21; --muted:#686c73; --line:#d9d5cb;
+  --work:#d63a1f; --rest:#2b68ad; --ready:#c88a0a; --done:#2c8a55; --focus:#2b68ad;
+  --display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;
+  --body:'Barlow',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14161a; --surface:#1d2025; --ink:#eceae4; --muted:#9a9ea6; --line:#2f333a;
+    --work:#e0472a; --rest:#4a8fd8; --ready:#e0a02a; --done:#3fae6a; --focus:#7db3ee;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14161a; --surface:#1d2025; --ink:#eceae4; --muted:#9a9ea6; --line:#2f333a;
+  --work:#e0472a; --rest:#4a8fd8; --ready:#e0a02a; --done:#3fae6a; --focus:#7db3ee;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:500 16px/1.45 var(--body);-webkit-tap-highlight-color:transparent}
+button,input{font-family:inherit}
+.top{max-width:520px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 16px 6px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+h1{font:900 36px/1 var(--display);letter-spacing:.03em;text-transform:uppercase;margin:0}
+.week{display:flex;gap:8px;margin-top:10px}
+.week div{width:20px;text-align:center}
+.week span{display:block;font:700 11px/1 var(--body);color:var(--muted)}
+.week i{display:block;width:14px;height:14px;border-radius:50%;margin:5px auto 0;border:2px solid var(--line)}
+.week .on i{background:var(--done);border-color:var(--done)}
+.week .today span{color:var(--ink)}
+.week .today i{border-color:var(--ink)}
+.tools{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.pill{border:2px solid var(--line);background:transparent;color:var(--ink);border-radius:99px;height:36px;padding:0 14px;font:700 13px var(--body);cursor:pointer}
+.pill[aria-pressed="false"]{color:var(--muted)}
+main{max-width:520px;margin:0 auto;padding:8px 16px 120px}
+.panel{display:flex;flex-direction:column;gap:14px}
+.panel[hidden]{display:none}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lbl{font:800 16px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);min-width:48px}
+.chip{border:2px solid var(--line);background:transparent;color:var(--ink);border-radius:99px;min-height:44px;padding:0 16px;font:700 15px var(--body);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.stage{border-radius:22px;padding:18px 18px 16px;background:var(--surface);border:1px solid var(--line);color:var(--ink);transition:background .25s,color .25s;min-height:236px;display:flex;flex-direction:column;gap:6px}
+.stage[data-phase="work"]{background:var(--work);color:#fff;border-color:transparent}
+.stage[data-phase="rest"]{background:var(--rest);color:#fff;border-color:transparent}
+.stage[data-phase="ready"]{background:var(--ready);color:#1b1d21;border-color:transparent}
+.stage[data-phase="done"]{background:var(--done);color:#fff;border-color:transparent}
+.stage-top{display:flex;justify-content:space-between;gap:8px;font:800 22px/1 var(--display);letter-spacing:.09em;text-transform:uppercase}
+.stage-top .mt{opacity:.85}
+.clock{font:900 clamp(96px,30vw,150px)/.9 var(--display);font-variant-numeric:tabular-nums;text-align:center;margin:12px 0 8px}
+.bar{height:8px;border-radius:99px;background:rgba(127,127,127,.28);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:currentColor;opacity:.85}
+.stage-sub{font:600 15px/1.3 var(--body);min-height:20px;opacity:.92}
+.ctrls{display:flex;gap:10px}
+.ctrls .btn{flex:1}
+.btn{appearance:none;border:0;border-radius:14px;min-height:56px;padding:0 20px;font:800 21px/1 var(--display);letter-spacing:.09em;text-transform:uppercase;cursor:pointer;background:var(--ink);color:var(--bg)}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--line)}
+.btn:disabled{opacity:.38;cursor:default}
+.btn.big{width:100%;min-height:64px;font-size:26px}
+.link{background:none;border:0;color:var(--muted);font:700 14px var(--body);text-decoration:underline;cursor:pointer;align-self:center;min-height:44px}
+:is(.btn,.chip,.pill,.link,.tabs button,.ex,input):focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.kicker{font:800 15px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h2{font:800 34px/1 var(--display);letter-spacing:.02em;text-transform:uppercase;margin:0;text-wrap:balance}
+.target{font:700 18px var(--body)}
+.cue{margin:0;color:var(--muted);font-size:15px;max-width:65ch}
+.kg{display:flex;align-items:center;gap:10px;font:700 15px var(--body);color:var(--muted)}
+.kg input{width:96px;min-height:44px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink);font:700 18px var(--body);padding:0 12px}
+.exlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ex{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-left:6px solid var(--line);border-radius:14px;padding:12px 14px;min-height:56px;cursor:pointer;font:700 16px var(--body)}
+.ex small{display:block;font:600 13px var(--body);color:var(--muted)}
+.ex.cur{border-left-color:var(--work)}
+.ex.fin{border-left-color:var(--done)}
+.dots{display:flex;gap:6px;flex-shrink:0}
+.dots i{width:12px;height:12px;border-radius:50%;border:2px solid var(--line)}
+.dots i.on{background:var(--done);border-color:var(--done)}
+.stepper{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:8px 8px 8px 16px}
+.stepper .lbl{min-width:0}
+.stepper .val{font:900 34px/1 var(--display);font-variant-numeric:tabular-nums;min-width:84px;text-align:center}
+.stepper .sb{display:flex;align-items:center;gap:6px}
+.sbtn{width:48px;height:48px;border-radius:12px;border:2px solid var(--line);background:transparent;color:var(--ink);font:800 26px/1 var(--display);cursor:pointer}
+.sbtn:disabled{opacity:.35;cursor:default}
+.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tabs button{flex:1;min-height:62px;border:0;background:none;color:var(--muted);font:800 19px var(--display);letter-spacing:.1em;text-transform:uppercase;cursor:pointer;position:relative}
+.tabs button[aria-selected="true"]{color:var(--ink)}
+.tabs button[aria-selected="true"]::before{content:"";position:absolute;top:0;left:25%;right:25%;height:4px;background:var(--work);border-radius:0 0 4px 4px}
+@media (prefers-reduced-motion: reduce){.stage{transition:none}}
+</style>
+<meta name="theme-color" content="#14161a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Round Clock">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Round Clock</h1>
+    <div class="week" id="week" aria-label="Sessions this week"></div>
+  </div>
+  <div class="tools">
+    <button class="pill" id="soundBtn" aria-pressed="true">Sound on</button>
+    <button class="pill" id="awakeBtn" aria-pressed="true" hidden>Screen stays on</button>
+  </div>
+</header>
+
+<main>
+  <section class="panel" id="tab-strength">
+    <div class="row" id="sessChips">
+      <button class="chip" data-k="A" aria-pressed="true">Session A</button>
+      <button class="chip" data-k="B" aria-pressed="false">Session B</button>
+      <button class="chip" id="wk1Btn" aria-pressed="true">Week 1: 2 sets</button>
+    </div>
+    <div class="row">
+      <span class="lbl">Rest</span>
+      <div class="row" id="restChips">
+        <button class="chip" data-s="60" aria-pressed="false">60 s</button>
+        <button class="chip" data-s="90" aria-pressed="true">90 s</button>
+        <button class="chip" data-s="120" aria-pressed="false">120 s</button>
+      </div>
+    </div>
+    <div id="stageS"></div>
+    <div class="ctrls" id="sCtrl" hidden>
+      <button class="btn ghost" id="sPlus">+15 s</button>
+      <button class="btn ghost" id="sStop">Stop</button>
+    </div>
+    <div class="card" id="exCard"></div>
+    <ol class="exlist" id="exList"></ol>
+    <button class="link" id="sReset">Restart session</button>
+  </section>
+
+  <section class="panel" id="tab-rounds" hidden>
+    <div class="row" id="presets"></div>
+    <div id="stageR"></div>
+    <div class="ctrls">
+      <button class="btn" id="rStart">Start</button>
+      <button class="btn ghost" id="rSkip">Skip</button>
+      <button class="btn ghost" id="rReset">Reset</button>
+    </div>
+    <div class="stepper"><span class="lbl">Rounds</span><span class="sb"><button class="sbtn" data-f="rounds" data-d="-1" aria-label="Fewer rounds">−</button><span class="val" id="vRounds">8</span><button class="sbtn" data-f="rounds" data-d="1" aria-label="More rounds">+</button></span></div>
+    <div class="stepper"><span class="lbl">Work</span><span class="sb"><button class="sbtn" data-f="work" data-d="-1" aria-label="Shorter work">−</button><span class="val" id="vWork">00:30</span><button class="sbtn" data-f="work" data-d="1" aria-label="Longer work">+</button></span></div>
+    <div class="stepper"><span class="lbl">Rest</span><span class="sb"><button class="sbtn" data-f="rest" data-d="-1" aria-label="Shorter rest">−</button><span class="val" id="vRest">00:30</span><button class="sbtn" data-f="rest" data-d="1" aria-label="Longer rest">+</button></span></div>
+  </section>
+
+  <section class="panel" id="tab-timer" hidden>
+    <div class="row" id="tPresets"></div>
+    <div id="stageT"></div>
+    <div class="ctrls">
+      <button class="btn" id="tStart">Start</button>
+      <button class="btn ghost" id="tPlus">+15 s</button>
+      <button class="btn ghost" id="tReset">Reset</button>
+    </div>
+    <div class="stepper"><span class="lbl">Length</span><span class="sb"><button class="sbtn" id="tMinus" aria-label="Shorter">−</button><span class="val" id="vTimer">01:30</span><button class="sbtn" id="tAdd" aria-label="Longer">+</button></span></div>
+  </section>
+</main>
+
+<nav class="tabs" role="tablist" aria-label="Timers">
+  <button role="tab" data-tab="strength" aria-selected="true">Strength</button>
+  <button role="tab" data-tab="rounds" aria-selected="false">Rounds</button>
+  <button role="tab" data-tab="timer" aria-selected="false">Timer</button>
+</nav>
+
+<script>
+(function(){
+'use strict';
+var $ = function(s, r){ return (r||document).querySelector(s); };
+var $$ = function(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
+
+/* ---------- storage (per viewer, may be missing) ---------- */
+var store = {
+  get: function(k, d){ try{ var v = localStorage.getItem('rc.'+k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set: function(k, v){ try{ localStorage.setItem('rc.'+k, JSON.stringify(v)); }catch(e){} }
+};
+
+/* ---------- sound, vibration, screen lock ---------- */
+var actx = null, soundOn = store.get('sound', true), awakeOn = store.get('awake', true), wl = null;
+function ensureAudio(){
+  try{
+    if(!actx){ var C = window.AudioContext || window.webkitAudioContext; if(C) actx = new C(); }
+    if(actx && actx.state === 'suspended') actx.resume();
+  }catch(e){}
+}
+function beep(freq, dur, vol, when){
+  if(!soundOn || !actx) return;
+  try{
+    var t = actx.currentTime + (when||0), o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g); g.connect(actx.destination);
+    o.start(t); o.stop(t+dur+0.03);
+  }catch(e){}
+}
+function buzz(p){ try{ if(soundOn && navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+var cues = {
+  tick: function(){ beep(880, 0.09, 0.22); },
+  work: function(){ beep(1175, 0.55, 0.32); buzz([220]); },
+  rest: function(){ beep(660, 0.4, 0.32); buzz([120,80,120]); },
+  set:  function(){ beep(784, 0.14, 0.26); },
+  done: function(){ beep(988, 0.18, 0.3, 0); beep(988, 0.18, 0.3, 0.26); beep(1319, 0.7, 0.3, 0.52); buzz([300,100,300,100,500]); }
+};
+function setAwake(on){
+  try{
+    if(on && 'wakeLock' in navigator){
+      if(wl) return;
+      navigator.wakeLock.request('screen').then(function(l){ wl = l; l.addEventListener('release', function(){ wl = null; }); }).catch(function(){ wl = null; });
+    } else if(wl){ wl.release(); wl = null; }
+  }catch(e){ wl = null; }
+}
+var runners = [];
+function syncAwake(){ setAwake(awakeOn && runners.some(function(r){ return r.state === 'running'; })); }
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') syncAwake(); });
+
+/* ---------- time helpers ---------- */
+function fmt(s){ s = Math.max(0, Math.ceil(s)); var m = Math.floor(s/60), r = s%60; return String(m).padStart(2,'0')+':'+String(r).padStart(2,'0'); }
+function stepFor(v){ return v < 60 ? 5 : 15; }
+
+/* ---------- week dots ---------- */
+var DAYS = ['M','T','W','T','F','S','S'];
+function dkey(d){ var p = function(n){ return String(n).padStart(2,'0'); }; return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function renderWeek(){
+  var log = store.get('log', {}), now = new Date(), dow = (now.getDay()+6)%7, mon = new Date(now), el = $('#week');
+  mon.setDate(now.getDate()-dow); el.innerHTML = '';
+  for(var i=0;i<7;i++){
+    var d = new Date(mon); d.setDate(mon.getDate()+i);
+    var k = dkey(d), s = document.createElement('div');
+    s.className = (log[k] && log[k].length ? 'on ' : '') + (i===dow ? 'today' : '');
+    s.title = log[k] ? log[k].join(', ') : 'No session logged';
+    s.innerHTML = '<span>'+DAYS[i]+'</span><i></i>';
+    el.appendChild(s);
+  }
+}
+function logDone(label){
+  var log = store.get('log', {}), k = dkey(new Date());
+  (log[k] = log[k] || []).push(label); store.set('log', log); renderWeek();
+}
+
+/* ---------- runner: a list of timed steps with pause, skip and +seconds ---------- */
+function Runner(h){ this.h = h; this.steps = []; this.i = 0; this.endAt = 0; this.remMs = 0; this.total = 0; this.state = 'idle'; this.iv = null; this.lastSec = null; this.endCue = null; runners.push(this); }
+Runner.prototype.cur = function(){ return this.steps[this.i]; };
+Runner.prototype._state = function(s){ this.state = s; if(this.h.onState) this.h.onState(s); syncAwake(); };
+Runner.prototype.load = function(steps, endCue){
+  clearInterval(this.iv); this.steps = steps; this.i = 0; this.endCue = endCue || null;
+  this.remMs = steps.length ? steps[0].secs*1000 : 0; this.total = this.remMs;
+  this._state('idle'); if(this.h.onIdle) this.h.onIdle();
+};
+Runner.prototype._begin = function(){
+  var s = this.cur(); this.total = s.secs*1000; this.remMs = this.total; this.endAt = Date.now()+this.remMs; this.lastSec = null;
+  if(this.h.onStep) this.h.onStep(s, this.i);
+  if(s.kind === 'work') cues.work(); else if(s.kind === 'rest') cues.rest();
+  if(this.h.onTick) this.h.onTick(this.remMs, this.total);
+};
+Runner.prototype._loop = function(){ var me = this; clearInterval(this.iv); this.iv = setInterval(function(){ me._tick(); }, 100); };
+Runner.prototype.start = function(){
+  if(!this.steps.length) return; ensureAudio();
+  var me = this;
+  if(this.state === 'idle' || this.state === 'done'){
+    runners.forEach(function(r){ if(r !== me) r.pause(); });
+    this.i = 0; this._begin(); this._loop(); this._state('running');
+  } else if(this.state === 'paused'){
+    runners.forEach(function(r){ if(r !== me) r.pause(); });
+    this.endAt = Date.now()+this.remMs; this._loop(); this._state('running');
+  }
+};
+Runner.prototype.pause = function(){
+  if(this.state !== 'running') return;
+  this.remMs = Math.max(0, this.endAt-Date.now()); clearInterval(this.iv); this._state('paused');
+};
+Runner.prototype._tick = function(){
+  var rem = this.endAt-Date.now();
+  if(rem <= 0){ this._next(); return; }
+  this.remMs = rem;
+  var sec = Math.ceil(rem/1000);
+  if(sec !== this.lastSec){ this.lastSec = sec; if(sec <= 3 && sec >= 1) cues.tick(); }
+  if(this.h.onTick) this.h.onTick(rem, this.total);
+};
+Runner.prototype._next = function(){
+  if(this.i+1 >= this.steps.length){
+    clearInterval(this.iv); this.remMs = 0;
+    if(this.h.onTick) this.h.onTick(0, this.total);
+    this._state('done');
+    if(this.endCue) this.endCue(); else cues.done();
+    if(this.h.onDone) this.h.onDone();
+    return;
+  }
+  this.i++; this._begin();
+};
+Runner.prototype.skip = function(){
+  if(this.state !== 'running' && this.state !== 'paused') return;
+  var wasPaused = this.state === 'paused'; this.state = 'running'; this._next();
+  if(this.state === 'running'){ if(wasPaused) this.pause(); else this._loop(); }
+};
+Runner.prototype.addSeconds = function(n){
+  if(this.state === 'running'){ this.endAt += n*1000; this.total += n*1000; }
+  else if(this.state === 'paused'){ this.remMs += n*1000; this.total += n*1000; }
+  else return;
+  var rem = this.state === 'running' ? this.endAt-Date.now() : this.remMs;
+  if(this.h.onTick) this.h.onTick(rem, this.total);
+};
+Runner.prototype.reset = function(){ this.load(this.steps, this.endCue); };
+
+/* ---------- stage (the big clock) ---------- */
+function mkStage(host){
+  host.innerHTML = '<section class="stage" data-phase="idle"><div class="stage-top"><span class="ph">Ready</span><span class="mt"></span></div><div class="clock" role="timer">00:00</div><div class="bar"><i></i></div><div class="stage-sub"></div></section>';
+  var r = host.firstChild, q = function(s){ return r.querySelector(s); };
+  return { set: function(o){
+    if(o.phase !== undefined) r.dataset.phase = o.phase;
+    if(o.label !== undefined) q('.ph').textContent = o.label;
+    if(o.meta !== undefined) q('.mt').textContent = o.meta;
+    if(o.time !== undefined) q('.clock').textContent = o.time;
+    if(o.pct !== undefined) q('.bar i').style.width = o.pct+'%';
+    if(o.sub !== undefined) q('.stage-sub').textContent = o.sub;
+  }};
+}
+function pctOf(rem, total){ return total > 0 ? Math.min(100, Math.max(0, 100*(1-rem/total))) : 0; }
+
+/* =====================  STRENGTH  ===================== */
+var SESSIONS = {
+  A: [
+    { n:'Goblet squat', sets:3, reps:'10', cue:'Hold one dumbbell at your chest, sit down between your heels, keep your chest up.' },
+    { n:'Dumbbell floor press', sets:3, reps:'10', cue:'Elbows about 45° from your body. Lower until they touch the floor, then press up.' },
+    { n:'One-arm row', sets:3, reps:'10', side:true, cue:'Flat back. Pull the elbow to your hip, then do the other arm.' },
+    { n:'Overhead press', sets:3, reps:'8', cue:'Squeeze your glutes and press straight up without leaning back.' },
+    { n:'Plank', sets:3, hold:30, bw:true, cue:'One straight line from head to heels. No sagging hips.' }
+  ],
+  B: [
+    { n:'Romanian deadlift', sets:3, reps:'10', cue:'Soft knees, push your hips back, slide the dumbbells down your thighs, flat back.' },
+    { n:'Reverse lunge', sets:3, reps:'8', side:true, cue:'Step back, lower the back knee toward the floor, push through the front heel.' },
+    { n:'Push-ups', sets:3, reps:'max', bw:true, cue:'Stop the set when your form breaks. Use your knees if you need to.' },
+    { n:'One-arm row', sets:3, reps:'10', side:true, cue:'Flat back. Pull the elbow to your hip, then do the other arm.' },
+    { n:'Side plank', sets:3, hold:30, side:true, bw:true, cue:'Stack your feet, lift your hips, one straight line.' }
+  ]
+};
+var S = { key: store.get('sKey','A'), wk1: store.get('wk1', true), rest: store.get('rest', 90), ex:0, set:0, done:{}, finished:false, mode:'idle', next:'' };
+var kgMap = store.get('kg', {});
+var stS = mkStage($('#stageS'));
+function exs(){ return SESSIONS[S.key]; }
+function curEx(){ return exs()[S.ex]; }
+function setsOf(e){ return S.wk1 ? Math.min(e.sets, 2) : e.sets; }
+function targetText(e){
+  if(e.hold) return e.hold+' s hold'+(e.side ? ' each side' : '');
+  if(e.reps === 'max') return 'Max clean reps';
+  return e.reps+' reps'+(e.side ? ' each side' : '');
+}
+function nextText(){
+  if(S.finished) return 'Session complete';
+  var e = curEx(); return 'Next: '+e.n+', set '+(S.set+1)+' of '+setsOf(e);
+}
+var rStr = new Runner({
+  onIdle: function(){
+    if(S.mode === 'ready'){ return; }
+    stS.set({ phase:'idle', label:'Rest timer', meta:'', time:fmt(S.rest), pct:0, sub:'Starts when you finish a set.' });
+  },
+  onStep: function(step){ stS.set({ phase:step.kind, label:step.label, meta:'', sub:S.next }); },
+  onTick: function(rem, total){ stS.set({ time:fmt(rem/1000), pct:pctOf(rem,total) }); },
+  onState: function(){ renderS(); },
+  onDone: function(){
+    if(S.mode === 'hold'){ setDone(); return; }
+    S.mode = 'ready';
+    stS.set({ phase:'ready', label:'Next set', time:'GO', pct:100, sub:nextText() });
+    renderS();
+  }
+});
+function startRest(){
+  S.mode = 'rest'; S.next = nextText();
+  rStr.load([{ kind:'rest', label:'Rest', secs:S.rest }], function(){ cues.work(); });
+  rStr.start();
+}
+function startHold(){
+  var e = curEx(), steps;
+  S.mode = 'hold'; S.next = e.n+', set '+(S.set+1)+' of '+setsOf(e);
+  if(e.side){
+    steps = [{ kind:'work', label:'Hold, left', secs:e.hold }, { kind:'ready', label:'Switch sides', secs:5 }, { kind:'work', label:'Hold, right', secs:e.hold }];
+  } else {
+    steps = [{ kind:'ready', label:'Get in position', secs:5 }, { kind:'work', label:'Hold', secs:e.hold }];
+  }
+  rStr.load(steps, function(){});
+  rStr.start();
+}
+function setDone(){
+  S.done[S.ex] = (S.done[S.ex]||0) + 1; cues.set();
+  var e = curEx();
+  if(S.set+1 < setsOf(e)){ S.set++; }
+  else if(S.ex+1 < exs().length){ S.ex++; S.set = 0; }
+  else { S.finished = true; }
+  if(S.finished){
+    S.mode = 'idle'; logDone('Strength '+S.key);
+    stS.set({ phase:'done', label:'Session done', meta:'', time:'DONE', pct:100, sub:'Logged to this week.' });
+    cues.done(); renderS();
+  } else {
+    startRest(); renderS();
+  }
+}
+function renderS(){
+  $$('#sessChips [data-k]').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.k === S.key)); });
+  $('#wk1Btn').setAttribute('aria-pressed', String(S.wk1));
+  $$('#restChips .chip').forEach(function(b){ b.setAttribute('aria-pressed', String(+b.dataset.s === S.rest)); });
+  var active = rStr.state === 'running' || rStr.state === 'paused';
+  $('#sCtrl').hidden = !active;
+  $('#sPlus').disabled = !active;
+  var list = exs(), card = $('#exCard');
+  if(S.finished){
+    var total = 0; Object.keys(S.done).forEach(function(k){ total += S.done[k]; });
+    card.innerHTML = '<div class="kicker">Session '+S.key+'</div><h2>Done. '+total+' sets</h2><p class="cue">Logged to this week. Add weight next time once every set reaches the top of its rep range.</p><button class="btn big" id="againBtn">Start again</button>';
+    $('#againBtn').onclick = resetSession;
+  } else {
+    var e = curEx(), isHold = !!e.hold, busy = active && S.mode === 'hold', resting = active && S.mode === 'rest';
+    var label = busy ? 'Holding' : resting ? 'Skip rest' : isHold ? 'Start hold' : 'Set done';
+    card.innerHTML =
+      '<div class="kicker">Exercise '+(S.ex+1)+' of '+list.length+'</div>'+
+      '<h2>'+e.n+'</h2>'+
+      '<div class="target">Set '+(S.set+1)+' of '+setsOf(e)+' · '+targetText(e)+'</div>'+
+      '<p class="cue">'+e.cue+'</p>'+
+      (e.bw ? '' : '<label class="kg" for="kgIn">Weight <input id="kgIn" type="number" inputmode="decimal" min="0" step="0.5" placeholder="kg" value="'+(kgMap[e.n]||'')+'"> kg each hand</label>')+
+      '<button class="btn big" id="doneBtn"'+(busy ? ' disabled' : '')+'>'+label+'</button>';
+    var kg = $('#kgIn'); if(kg) kg.oninput = function(){ kgMap[e.n] = kg.value; store.set('kg', kgMap); };
+    $('#doneBtn').onclick = function(){
+      ensureAudio();
+      if(resting){ rStr.reset(); S.mode = 'ready'; stS.set({ phase:'ready', label:'Next set', time:'GO', pct:100, sub:nextText() }); renderS(); }
+      else if(isHold) startHold();
+      else setDone();
+    };
+  }
+  var ol = $('#exList'); ol.innerHTML = '';
+  list.forEach(function(e, i){
+    var n = S.done[i]||0, tot = setsOf(e), li = document.createElement('li'), dots = '';
+    for(var d=0; d<tot; d++) dots += '<i class="'+(d<n ? 'on' : '')+'"></i>';
+    li.innerHTML = '<button class="ex'+(n>=tot ? ' fin' : (i===S.ex && !S.finished ? ' cur' : ''))+'" data-i="'+i+'"><span>'+e.n+'<small>'+tot+' × '+targetText(e)+'</small></span><span class="dots" aria-label="'+n+' of '+tot+' sets done">'+dots+'</span></button>';
+    ol.appendChild(li);
+  });
+  $$('#exList .ex').forEach(function(b){
+    b.onclick = function(){
+      if(rStr.state === 'running' || rStr.state === 'paused') return;
+      S.ex = +b.dataset.i; S.set = Math.min(S.done[S.ex]||0, setsOf(curEx())-1); S.finished = false; S.mode = 'idle';
+      rStr.reset(); renderS();
+    };
+  });
+}
+function resetSession(){ S.ex = 0; S.set = 0; S.done = {}; S.finished = false; S.mode = 'idle'; rStr.load([]); rStr.state = 'idle'; renderS(); }
+$$('#sessChips [data-k]').forEach(function(b){ b.onclick = function(){ S.key = b.dataset.k; store.set('sKey', S.key); resetSession(); }; });
+$('#wk1Btn').onclick = function(){ S.wk1 = !S.wk1; store.set('wk1', S.wk1); resetSession(); };
+$$('#restChips .chip').forEach(function(b){ b.onclick = function(){ S.rest = +b.dataset.s; store.set('rest', S.rest); if(rStr.state === 'idle') rStr.reset(); renderS(); }; });
+$('#sPlus').onclick = function(){ rStr.addSeconds(15); };
+$('#sStop').onclick = function(){ rStr.reset(); S.mode = 'idle'; renderS(); };
+$('#sReset').onclick = resetSession;
+
+/* =====================  ROUNDS  ===================== */
+var cfg = Object.assign({ rounds:8, work:30, rest:30 }, store.get('rounds', {}));
+var PRESETS = [
+  { n:'Weeks 1-2', r:8, w:30, s:30 }, { n:'Weeks 3-4', r:10, w:45, s:15 }, { n:'Month 2', r:8, w:60, s:30 },
+  { n:'Month 3', r:6, w:120, s:30 }, { n:'Months 4-5', r:6, w:180, s:60 }
+];
+var stR = mkStage($('#stageR'));
+function roundSteps(){
+  var s = [{ kind:'ready', label:'Get ready', secs:10 }];
+  for(var r=1; r<=cfg.rounds; r++){
+    s.push({ kind:'work', label:'Work', secs:cfg.work, round:r });
+    if(r < cfg.rounds && cfg.rest > 0) s.push({ kind:'rest', label:'Rest', secs:cfg.rest, round:r });
+  }
+  return s;
+}
+function roundsTotal(){ return 10 + cfg.rounds*cfg.work + (cfg.rounds-1)*cfg.rest; }
+var rRounds = new Runner({
+  onIdle: function(){ renderR(); },
+  onStep: function(step, i){
+    var nx = rRounds.steps[i+1];
+    stR.set({ phase:step.kind, label:step.label, meta:step.round ? 'Round '+step.round+' / '+cfg.rounds : '', sub: nx ? 'Next: '+nx.label+' '+fmt(nx.secs) : 'Last one. Finish strong.' });
+  },
+  onTick: function(rem, total){ stR.set({ time:fmt(rem/1000), pct:pctOf(rem,total) }); },
+  onState: function(s){ renderR(); },
+  onDone: function(){ stR.set({ phase:'done', label:'Done', meta:cfg.rounds+' rounds', time:'DONE', pct:100, sub:'Logged to this week.' }); logDone('Rounds'); }
+});
+function renderR(){
+  $('#vRounds').textContent = cfg.rounds; $('#vWork').textContent = fmt(cfg.work); $('#vRest').textContent = fmt(cfg.rest);
+  var st = rRounds.state, idle = st === 'idle';
+  if(idle) stR.set({ phase:'idle', label:'Rounds', meta:cfg.rounds+' × '+fmt(cfg.work)+' / '+fmt(cfg.rest), time:fmt(cfg.work), pct:0, sub:'Total '+fmt(roundsTotal())+' including a 10 s countdown.' });
+  $('#rStart').textContent = st === 'running' ? 'Pause' : st === 'paused' ? 'Resume' : st === 'done' ? 'Again' : 'Start';
+  $('#rSkip').disabled = idle || st === 'done';
+  $$('#tab-rounds .sbtn').forEach(function(b){ b.disabled = !idle; });
+  $$('#presets .chip').forEach(function(b, i){ var p = PRESETS[i]; b.disabled = !idle; b.setAttribute('aria-pressed', String(p.r===cfg.rounds && p.w===cfg.work && p.s===cfg.rest)); });
+}
+function loadRounds(){ store.set('rounds', cfg); rRounds.load(roundSteps()); }
+PRESETS.forEach(function(p){
+  var b = document.createElement('button'); b.className = 'chip'; b.setAttribute('aria-pressed','false');
+  b.textContent = p.n; b.onclick = function(){ cfg.rounds = p.r; cfg.work = p.w; cfg.rest = p.s; loadRounds(); };
+  $('#presets').appendChild(b);
+});
+$$('#tab-rounds .sbtn').forEach(function(b){
+  b.onclick = function(){
+    var f = b.dataset.f, d = +b.dataset.d;
+    if(f === 'rounds') cfg.rounds = Math.min(30, Math.max(1, cfg.rounds+d));
+    if(f === 'work') cfg.work = Math.min(600, Math.max(5, cfg.work + d*stepFor(d<0 ? cfg.work-1 : cfg.work)));
+    if(f === 'rest') cfg.rest = Math.min(600, Math.max(0, cfg.rest + d*stepFor(d<0 ? cfg.rest-1 : cfg.rest)));
+    loadRounds();
+  };
+});
+$('#rStart').onclick = function(){
+  var st = rRounds.state;
+  if(st === 'running') rRounds.pause(); else rRounds.start();
+};
+$('#rSkip').onclick = function(){ rRounds.skip(); };
+$('#rReset').onclick = function(){ rRounds.reset(); };
+
+/* =====================  FREE TIMER  ===================== */
+var T = { secs: store.get('free', 90) };
+var stT = mkStage($('#stageT'));
+var rTimer = new Runner({
+  onIdle: function(){ renderT(); },
+  onStep: function(){ stT.set({ phase:'work', label:'Countdown', meta:'', sub:'' }); },
+  onTick: function(rem, total){ stT.set({ time:fmt(rem/1000), pct:pctOf(rem,total) }); },
+  onState: function(){ renderT(); },
+  onDone: function(){ stT.set({ phase:'done', label:'Time', time:'DONE', pct:100, sub:'Countdown finished.' }); }
+});
+function renderT(){
+  $('#vTimer').textContent = fmt(T.secs);
+  var st = rTimer.state, idle = st === 'idle' || st === 'done';
+  if(st === 'idle') stT.set({ phase:'idle', label:'Countdown', meta:'', time:fmt(T.secs), pct:0, sub:'Pick a length and press start.' });
+  $('#tStart').textContent = st === 'running' ? 'Pause' : st === 'paused' ? 'Resume' : st === 'done' ? 'Again' : 'Start';
+  $('#tPlus').disabled = !(st === 'running' || st === 'paused');
+  $('#tMinus').disabled = !idle; $('#tAdd').disabled = !idle;
+  $$('#tPresets .chip').forEach(function(b){ b.disabled = !idle; b.setAttribute('aria-pressed', String(+b.dataset.s === T.secs)); });
+}
+function loadTimer(){ store.set('free', T.secs); rTimer.load([{ kind:'work', label:'Countdown', secs:T.secs }]); }
+[30,60,90,120,180,300,600].forEach(function(s){
+  var b = document.createElement('button'); b.className = 'chip'; b.dataset.s = s; b.setAttribute('aria-pressed','false');
+  b.textContent = fmt(s); b.onclick = function(){ T.secs = s; loadTimer(); };
+  $('#tPresets').appendChild(b);
+});
+$('#tAdd').onclick = function(){ T.secs = Math.min(3600, T.secs + stepFor(T.secs)); loadTimer(); };
+$('#tMinus').onclick = function(){ T.secs = Math.max(5, T.secs - stepFor(T.secs-1)); loadTimer(); };
+$('#tStart').onclick = function(){ if(rTimer.state === 'running') rTimer.pause(); else rTimer.start(); };
+$('#tPlus').onclick = function(){ rTimer.addSeconds(15); };
+$('#tReset').onclick = function(){ rTimer.reset(); };
+
+/* =====================  SHELL  ===================== */
+var TABS = ['strength','rounds','timer'];
+function showTab(name){
+  if(TABS.indexOf(name) < 0) name = 'strength';
+  TABS.forEach(function(t){ $('#tab-'+t).hidden = t !== name; });
+  $$('.tabs button').forEach(function(b){ b.setAttribute('aria-selected', String(b.dataset.tab === name)); });
+}
+$$('.tabs button').forEach(function(b){ b.onclick = function(){ location.hash = b.dataset.tab; showTab(b.dataset.tab); }; });
+window.addEventListener('hashchange', function(){ showTab(location.hash.replace('#','')); });
+
+function paintTools(){
+  $('#soundBtn').textContent = soundOn ? 'Sound on' : 'Sound off'; $('#soundBtn').setAttribute('aria-pressed', String(soundOn));
+  $('#awakeBtn').textContent = awakeOn ? 'Screen stays on' : 'Screen may sleep'; $('#awakeBtn').setAttribute('aria-pressed', String(awakeOn));
+}
+$('#soundBtn').onclick = function(){ soundOn = !soundOn; store.set('sound', soundOn); ensureAudio(); if(soundOn) cues.set(); paintTools(); };
+$('#awakeBtn').onclick = function(){ awakeOn = !awakeOn; store.set('awake', awakeOn); paintTools(); syncAwake(); };
+if('wakeLock' in navigator) $('#awakeBtn').hidden = false;
+
+/* boot */
+renderWeek(); paintTools();
+rStr.load([]); renderS();
+loadRounds(); loadTimer();
+showTab(location.hash.replace('#',''));
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
