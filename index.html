@@ -69,7 +69,7 @@ main{max-width:520px;margin:0 auto;padding:8px 16px 120px}
 .btn:disabled{opacity:.38;cursor:default}
 .btn.big{width:100%;min-height:64px;font-size:26px}
 .link{background:none;border:0;color:var(--muted);font:700 14px var(--body);text-decoration:underline;cursor:pointer;align-self:center;min-height:44px}
-:is(.btn,.chip,.pill,.link,.tabs button,.ex,input):focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+:is(.btn,.chip,.pill,.link,.tabs button,.ex,input,summary):focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:8px}
 .kicker{font:800 15px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 h2{font:800 34px/1 var(--display);letter-spacing:.02em;text-transform:uppercase;margin:0;text-wrap:balance}
@@ -92,9 +92,18 @@ h2{font:800 34px/1 var(--display);letter-spacing:.02em;text-transform:uppercase;
 .sbtn{width:48px;height:48px;border-radius:12px;border:2px solid var(--line);background:transparent;color:var(--ink);font:800 26px/1 var(--display);cursor:pointer}
 .sbtn:disabled{opacity:.35;cursor:default}
 .tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-.tabs button{flex:1;min-height:62px;border:0;background:none;color:var(--muted);font:800 19px var(--display);letter-spacing:.1em;text-transform:uppercase;cursor:pointer;position:relative}
+.tabs button{flex:1;min-height:62px;border:0;background:none;color:var(--muted);font:800 18px var(--display);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;position:relative}
 .tabs button[aria-selected="true"]{color:var(--ink)}
 .tabs button[aria-selected="true"]::before{content:"";position:absolute;top:0;left:25%;right:25%;height:4px;background:var(--work);border-radius:0 0 4px 4px}
+div.ex{cursor:default}
+.guide{display:flex;flex-direction:column;gap:8px}
+details{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:0 14px}
+summary{min-height:56px;display:flex;align-items:center;font:800 22px var(--display);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";margin-left:auto;font:800 28px var(--display);color:var(--muted)}
+details[open] summary::after{content:"\2212"}
+details ul{margin:0 0 14px;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+details li{font-size:16px;max-width:65ch}
 @media (prefers-reduced-motion: reduce){.stage{transition:none}}
 </style>
 <meta name="theme-color" content="#14161a">
@@ -156,6 +165,42 @@ h2{font:800 34px/1 var(--display);letter-spacing:.02em;text-transform:uppercase;
     <div class="stepper"><span class="lbl">Rest</span><span class="sb"><button class="sbtn" data-f="rest" data-d="-1" aria-label="Shorter rest">−</button><span class="val" id="vRest">00:30</span><button class="sbtn" data-f="rest" data-d="1" aria-label="Longer rest">+</button></span></div>
   </section>
 
+  <section class="panel" id="tab-boxing" hidden>
+    <p class="cue">Four 2-minute rounds with 30 seconds of rest. Read the focus line on the clock each round.</p>
+    <div id="stageB"></div>
+    <div class="ctrls">
+      <button class="btn" id="bStart">Start</button>
+      <button class="btn ghost" id="bSkip">Skip</button>
+      <button class="btn ghost" id="bReset">Reset</button>
+    </div>
+    <ol class="exlist" id="focusList"></ol>
+    <div class="guide">
+      <details open><summary>Stance</summary><ul>
+        <li>Left foot forward, right foot back, about shoulder-width apart. If you're left-handed, mirror everything.</li>
+        <li>Back heel slightly raised, knees soft, weight about even on both feet.</li>
+        <li>Hands up near your cheekbones, elbows tucked in, chin down.</li>
+      </ul></details>
+      <details><summary>Footwork: step and slide</summary><ul>
+        <li>Move in the direction you want to go with the nearest foot first, then slide the other foot after it.</li>
+        <li>Never cross your feet or bring them together. Keep the shoulder-width gap.</li>
+        <li>Practise forward, back, left and right in small steps.</li>
+      </ul></details>
+      <details><summary>The jab</summary><ul>
+        <li>Shoot the front hand straight out from your guard and turn the fist palm-down as you arrive.</li>
+        <li>Snap it back along the same line to your guard. Don't lock the elbow out hard.</li>
+        <li>Breathe out sharply on every punch and keep your back hand up the whole time.</li>
+      </ul></details>
+      <details><summary>Mistakes to watch</summary><ul>
+        <li>Dropping your back hand.</li>
+        <li>Leaning forward when you punch.</li>
+        <li>Flaring your elbows out.</li>
+        <li>Crossing your feet.</li>
+        <li>Holding your breath.</li>
+        <li>Prop your phone up and film one round to check your form.</li>
+      </ul></details>
+    </div>
+  </section>
+
   <section class="panel" id="tab-timer" hidden>
     <div class="row" id="tPresets"></div>
     <div id="stageT"></div>
@@ -171,6 +216,7 @@ h2{font:800 34px/1 var(--display);letter-spacing:.02em;text-transform:uppercase;
 <nav class="tabs" role="tablist" aria-label="Timers">
   <button role="tab" data-tab="strength" aria-selected="true">Strength</button>
   <button role="tab" data-tab="rounds" aria-selected="false">Rounds</button>
+  <button role="tab" data-tab="boxing" aria-selected="false">Boxing</button>
   <button role="tab" data-tab="timer" aria-selected="false">Timer</button>
 </nav>
 
@@ -547,8 +593,63 @@ $('#tStart').onclick = function(){ if(rTimer.state === 'running') rTimer.pause()
 $('#tPlus').onclick = function(){ rTimer.addSeconds(15); };
 $('#tReset').onclick = function(){ rTimer.reset(); };
 
+/* =====================  BOXING  ===================== */
+var BOX = { rounds:4, work:120, rest:30 };
+var FOCUS = [
+  'Stance and footwork only. No punches.',
+  'Footwork plus a slow jab. Form first.',
+  'Move, then jab. One jab at a time.',
+  'Same, a little faster, only if your form stays clean.'
+];
+var boxDone = 0, boxNow = 0;
+var stB = mkStage($('#stageB'));
+function boxSteps(){
+  var s = [{ kind:'ready', label:'Get ready', secs:10 }];
+  for(var r=1; r<=BOX.rounds; r++){
+    s.push({ kind:'work', label:'Round '+r, secs:BOX.work, round:r, focus:FOCUS[r-1] });
+    if(r < BOX.rounds) s.push({ kind:'rest', label:'Rest', secs:BOX.rest, round:r });
+  }
+  return s;
+}
+var rBox = new Runner({
+  onIdle: function(){ boxDone = 0; boxNow = 0; renderB(); },
+  onStep: function(step, i){
+    var nx = rBox.steps[i+1];
+    var sub = step.kind === 'work' ? step.focus : (nx && nx.kind === 'work' ? 'Next: '+nx.label+'. '+nx.focus : '');
+    stB.set({ phase:step.kind, label:step.label, meta: step.round ? 'Round '+step.round+' / '+BOX.rounds : '', sub:sub });
+    if(step.kind === 'work'){ boxNow = step.round; boxDone = step.round-1; }
+    else if(step.kind === 'rest'){ boxNow = 0; boxDone = step.round; }
+    renderBList();
+  },
+  onTick: function(rem, total){ stB.set({ time:fmt(rem/1000), pct:pctOf(rem,total) }); },
+  onState: function(){ renderB(); },
+  onDone: function(){
+    boxNow = 0; boxDone = BOX.rounds;
+    stB.set({ phase:'done', label:'Done', meta:BOX.rounds+' rounds', time:'DONE', pct:100, sub:'Logged to this week.' });
+    logDone('Shadow boxing'); renderB();
+  }
+});
+function renderB(){
+  var st = rBox.state, idle = st === 'idle';
+  if(idle) stB.set({ phase:'idle', label:'Shadow boxing', meta:BOX.rounds+' × '+fmt(BOX.work), time:fmt(BOX.work), pct:0, sub:'Total '+fmt(10 + BOX.rounds*BOX.work + (BOX.rounds-1)*BOX.rest)+' with a 10 s countdown.' });
+  $('#bStart').textContent = st === 'running' ? 'Pause' : st === 'paused' ? 'Resume' : st === 'done' ? 'Again' : 'Start';
+  $('#bSkip').disabled = idle || st === 'done';
+  renderBList();
+}
+function renderBList(){
+  var ol = $('#focusList'); ol.innerHTML = '';
+  for(var i=0; i<BOX.rounds; i++){
+    var li = document.createElement('li'), cls = i < boxDone ? ' fin' : (i+1 === boxNow ? ' cur' : '');
+    li.innerHTML = '<div class="ex'+cls+'"><span>Round '+(i+1)+'<small>'+FOCUS[i]+'</small></span></div>';
+    ol.appendChild(li);
+  }
+}
+$('#bStart').onclick = function(){ if(rBox.state === 'running') rBox.pause(); else rBox.start(); };
+$('#bSkip').onclick = function(){ rBox.skip(); };
+$('#bReset').onclick = function(){ rBox.reset(); };
+
 /* =====================  SHELL  ===================== */
-var TABS = ['strength','rounds','timer'];
+var TABS = ['strength','rounds','boxing','timer'];
 function showTab(name){
   if(TABS.indexOf(name) < 0) name = 'strength';
   TABS.forEach(function(t){ $('#tab-'+t).hidden = t !== name; });
@@ -568,7 +669,7 @@ if('wakeLock' in navigator) $('#awakeBtn').hidden = false;
 /* boot */
 renderWeek(); paintTools();
 rStr.load([]); renderS();
-loadRounds(); loadTimer();
+loadRounds(); loadTimer(); rBox.load(boxSteps());
 showTab(location.hash.replace('#',''));
 })();
 </script>
