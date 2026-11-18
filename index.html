@@ -100,7 +100,7 @@ h2{font:800 34px/1 var(--display);letter-spacing:.02em;text-transform:uppercase;
 .sbtn{width:48px;height:48px;border-radius:12px;border:2px solid var(--line);background:transparent;color:var(--ink);font:800 26px/1 var(--display);cursor:pointer}
 .sbtn:disabled{opacity:.35;cursor:default}
 .tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-.tabs button{flex:1;min-height:62px;border:0;background:none;color:var(--muted);font:800 15px var(--display);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;position:relative}
+.tabs button{flex:1;min-height:62px;border:0;background:none;color:var(--muted);font:800 18px var(--display);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;position:relative}
 .tabs button[aria-selected="true"]{color:var(--ink)}
 .tabs button[aria-selected="true"]::before{content:"";position:absolute;top:0;left:25%;right:25%;height:4px;background:var(--work);border-radius:0 0 4px 4px}
 div.ex{cursor:default}
@@ -231,7 +231,6 @@ details li{font-size:16px;max-width:65ch}
 <nav class="tabs" role="tablist" aria-label="Timers">
   <button role="tab" data-tab="strength" aria-selected="true">Strength</button>
   <button role="tab" data-tab="rounds" aria-selected="false">Rounds</button>
-  <button role="tab" data-tab="boxing" aria-selected="false">Boxing</button>
   <button role="tab" data-tab="timer" aria-selected="false">Timer</button>
   <button role="tab" data-tab="log" aria-selected="false">Log</button>
 </nav>
@@ -698,7 +697,7 @@ $('#bSkip').onclick = function(){ rBox.skip(); };
 $('#bReset').onclick = function(){ rBox.reset(); };
 
 /* =====================  SHELL  ===================== */
-var TABS = ['strength','rounds','boxing','timer','log'];
+var TABS = ['strength','rounds','timer','log'];
 function showTab(name){
   if(TABS.indexOf(name) < 0) name = 'strength';
   TABS.forEach(function(t){ $('#tab-'+t).hidden = t !== name; });
