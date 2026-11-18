@@ -47,6 +47,14 @@ h1{font:900 36px/1 var(--display);letter-spacing:.03em;text-transform:uppercase;
 main{max-width:520px;margin:0 auto;padding:8px 16px 120px}
 .panel{display:flex;flex-direction:column;gap:14px}
 .panel[hidden]{display:none}
+.logsum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.logsum div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center}
+.logsum b{display:block;font:800 34px var(--display);line-height:1}
+.logsum small{color:var(--muted);font-size:13px}
+.logrow{display:flex;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.logrow b{font:800 18px var(--display);letter-spacing:.04em;text-transform:uppercase}
+.logrow span{color:var(--muted);text-align:right}
+
 .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .lbl{font:800 16px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);min-width:48px}
 .chip{border:2px solid var(--line);background:transparent;color:var(--ink);border-radius:99px;min-height:44px;padding:0 16px;font:700 15px var(--body);cursor:pointer}
@@ -92,7 +100,7 @@ h2{font:800 34px/1 var(--display);letter-spacing:.02em;text-transform:uppercase;
 .sbtn{width:48px;height:48px;border-radius:12px;border:2px solid var(--line);background:transparent;color:var(--ink);font:800 26px/1 var(--display);cursor:pointer}
 .sbtn:disabled{opacity:.35;cursor:default}
 .tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-.tabs button{flex:1;min-height:62px;border:0;background:none;color:var(--muted);font:800 18px var(--display);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;position:relative}
+.tabs button{flex:1;min-height:62px;border:0;background:none;color:var(--muted);font:800 15px var(--display);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;position:relative}
 .tabs button[aria-selected="true"]{color:var(--ink)}
 .tabs button[aria-selected="true"]::before{content:"";position:absolute;top:0;left:25%;right:25%;height:4px;background:var(--work);border-radius:0 0 4px 4px}
 div.ex{cursor:default}
@@ -214,6 +222,10 @@ details li{font-size:16px;max-width:65ch}
     </div>
     <div class="stepper"><span class="lbl">Length</span><span class="sb"><button class="sbtn" id="tMinus" aria-label="Shorter">−</button><span class="val" id="vTimer">01:30</span><button class="sbtn" id="tAdd" aria-label="Longer">+</button></span></div>
   </section>
+  <section class="panel" id="tab-log" hidden>
+    <div class="logsum" id="logSum"></div>
+    <div id="logList" style="display:flex;flex-direction:column;gap:10px"></div>
+  </section>
 </main>
 
 <nav class="tabs" role="tablist" aria-label="Timers">
@@ -221,6 +233,7 @@ details li{font-size:16px;max-width:65ch}
   <button role="tab" data-tab="rounds" aria-selected="false">Rounds</button>
   <button role="tab" data-tab="boxing" aria-selected="false">Boxing</button>
   <button role="tab" data-tab="timer" aria-selected="false">Timer</button>
+  <button role="tab" data-tab="log" aria-selected="false">Log</button>
 </nav>
 
 <script>
@@ -297,6 +310,26 @@ function renderWeek(){
 function logDone(label){
   var log = store.get('log', {}), k = dkey(new Date());
   (log[k] = log[k] || []).push(label); store.set('log', log); renderWeek();
+}
+
+
+/* ---------- log tab ---------- */
+function renderLog(){
+  var log = store.get('log', {}), keys = Object.keys(log).filter(function(k){ return log[k] && log[k].length; }).sort().reverse();
+  var total = 0, now = new Date(), dow = (now.getDay()+6)%7, wk = 0, streak = 0, i;
+  keys.forEach(function(k){ total += log[k].length; });
+  for(i=0;i<=dow;i++){ var d = new Date(now); d.setDate(now.getDate()-i); if(log[dkey(d)] && log[dkey(d)].length) wk++; }
+  var c = new Date(now); if(!(log[dkey(c)] && log[dkey(c)].length)) c.setDate(c.getDate()-1);
+  while(log[dkey(c)] && log[dkey(c)].length){ streak++; c.setDate(c.getDate()-1); }
+  $('#logSum').innerHTML = '<div><b>'+wk+'</b><small>This week</small></div><div><b>'+streak+'</b><small>Day streak</small></div><div><b>'+total+'</b><small>Sessions</small></div>';
+  var el = $('#logList'); el.innerHTML = '';
+  if(!keys.length){ el.innerHTML = '<p style="color:var(--muted)">No sessions yet. A session is logged when you finish every set of the day.</p>'; return; }
+  keys.forEach(function(k){
+    var p = k.split('-'), d = new Date(+p[0], +p[1]-1, +p[2]), r = document.createElement('div');
+    r.className = 'logrow';
+    r.innerHTML = '<b>'+d.toLocaleDateString('en-IN',{weekday:'short', day:'numeric', month:'short'})+'</b><span>'+log[k].join(', ')+'</span>';
+    el.appendChild(r);
+  });
 }
 
 /* ---------- runner: a list of timed steps with pause, skip and +seconds ---------- */
@@ -665,10 +698,11 @@ $('#bSkip').onclick = function(){ rBox.skip(); };
 $('#bReset').onclick = function(){ rBox.reset(); };
 
 /* =====================  SHELL  ===================== */
-var TABS = ['strength','rounds','boxing','timer'];
+var TABS = ['strength','rounds','boxing','timer','log'];
 function showTab(name){
   if(TABS.indexOf(name) < 0) name = 'strength';
   TABS.forEach(function(t){ $('#tab-'+t).hidden = t !== name; });
+  if(name === 'log') renderLog();
   $$('.tabs button').forEach(function(b){ b.setAttribute('aria-selected', String(b.dataset.tab === name)); });
 }
 $$('.tabs button').forEach(function(b){ b.onclick = function(){ location.hash = b.dataset.tab; showTab(b.dataset.tab); }; });
