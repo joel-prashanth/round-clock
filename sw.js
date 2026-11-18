@@ -1,5 +1,5 @@
 /* Round Clock service worker: app shell works offline, fonts are cached when first seen. */
-const VERSION = 'round-clock-v5';
+const VERSION = 'round-clock-v6';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {

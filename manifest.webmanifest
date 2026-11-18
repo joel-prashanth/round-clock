@@ -8,6 +8,41 @@
   "orientation": "portrait",
   "background_color": "#14161a",
   "theme_color": "#14161a",
+  "shortcuts": [
+    {
+      "name": "Today's workout",
+      "short_name": "Workout",
+      "url": "./#strength",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Workout log",
+      "short_name": "Log",
+      "url": "./#log",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Free timer",
+      "short_name": "Timer",
+      "url": "./#timer",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
   "icons": [
     {
       "src": "icons/icon-192.png",
